@@ -8,6 +8,7 @@ package:
   patterns:
     - "!**"
     - "app/**"
+    - "!**/__pycache__/**"
 
 provider:
   name: aws
@@ -16,8 +17,9 @@ provider:
   region: ${self:custom.regions.${self:provider.stage}}
 
 functions:
-  hello:
-    handler: app.handler.hello
+  coreLambdaFunction:
+    handler: app.functions.core.handler.lambda_handler
+    name: ${self:service}-${sls:stage}-core
     layers:
       - Ref: PythonRequirementsLambdaLayer
 
