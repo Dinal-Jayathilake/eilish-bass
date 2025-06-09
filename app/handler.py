@@ -1,16 +1,22 @@
 import json
 import time
 
-from app.services.intent_classification.intent_classifier import create_classifier_from_file
+from app.models.intent_classifier import IntentConfig
+from app.services.intent_classification.intent_classifier import IntentClassifier
 from app.services.logger import logger
 
 try:
-    classifier = create_classifier_from_file(
-        intents_file="app/services/intent_classification/intent_configs/csr_intents.json",
+    intents_file = "app/services/intent_classification/intent_configs/intents.json"
+
+    config = IntentConfig(
         fallback_intent_id="Fallback",
         confidence_threshold=0.8,
+        temperature=0.0,
+        max_tokens=None,
     )
-except (FileNotFoundError, ValueError, KeyError, TypeError):
+
+    classifier = IntentClassifier(intents_file=intents_file, config=config)
+except Exception:
     logger.exception("Failed to initialize classifier")
     classifier = None
 
@@ -40,7 +46,7 @@ def lambda_handler(event: dict, _context: object) -> dict:
             ),
         }
 
-    except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
+    except Exception as e:
         logger.exception("Exception during lambda_handler")
         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
@@ -49,7 +55,7 @@ if __name__ == "__main__":
     test_queries = [
         # "Can you show me a summary of customer 123456789?",
         # "What's my balance?",
-        "Transfer $1000 to account 987654321",
+        "Hi",
         # "Hello there!",
         # "Random gibberish that won't match any intent",
     ]
