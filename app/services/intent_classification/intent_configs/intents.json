@@ -1,0 +1,1086 @@
+[
+  {
+    "intent_id": "GetAccountSummary",
+    "description": "Retrieve a summary or overview of a specific account",
+    "examples": [
+      "Can you show me a summary of customer 123456789?",
+      "I need the account summary for customer 987654321",
+      "What is the overview of account 543216789?",
+      "Show me the details for account 123456987, please",
+      "What's the current status of customer 666778899?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "The account identifier",
+        "examples": ["123456789", "987654321", "543216789"]
+      }
+    ]
+  },
+  {
+    "intent_id": "CreateCashCredit",
+    "description": "Create or add a cash credit to an account when user explicitly mentions 'cash credit'",
+    "examples": [
+      "I want to add a cash credit of £50 with reason code 01",
+      "Can you create a cash credit for account 87654321 due to service interruption?",
+      "Please apply a €25 cash credit to my account with comment 'Billing adjustment'",
+      "Create a cash credit of ¥100 for account 123-456, reason is 'Goodwill gesture'",
+      "Add a cash credit to account 654321 with comment 'Compensation for delay'"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["87654321", "123-456", "654321"]
+      },
+      {
+        "name": "amount",
+        "type": "number",
+        "required": false,
+        "description": "Cash credit amount",
+        "examples": ["50", "25", "100"]
+      },
+      {
+        "name": "reason_code",
+        "type": "string",
+        "required": false,
+        "description": "Reason code for the credit",
+        "examples": ["01", "07", "10"]
+      },
+      {
+        "name": "comments",
+        "type": "string",
+        "required": false,
+        "description": "Additional comments or notes",
+        "examples": [
+          "Billing adjustment",
+          "Goodwill gesture",
+          "Compensation for delay"
+        ]
+      }
+    ]
+  },
+  {
+    "intent_id": "ConfirmCreateCashCredit",
+    "description": "Confirm cash credit creation after form completion or general confirmation to proceed",
+    "examples": [
+      "I've completed the cash credit form for account 123456789. Amount: 100, Reason Code: 53, Comments: Customer satisfaction.",
+      "I've completed the cash credit form for account 987654321. Amount: 200, Reason Code: 35, Comments: System outage compensation.",
+      "Yes, go ahead please",
+      "Yes, proceed",
+      "Go ahead"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["123456789", "987654321", "3442"]
+      },
+      {
+        "name": "amount",
+        "type": "number",
+        "required": false,
+        "description": "Cash credit amount",
+        "examples": ["100", "200", "50"]
+      },
+      {
+        "name": "reason_code",
+        "type": "string",
+        "required": false,
+        "description": "Reason code for the credit",
+        "examples": ["53", "35", "12"]
+      },
+      {
+        "name": "comments",
+        "type": "string",
+        "required": false,
+        "description": "Additional comments",
+        "examples": [
+          "Customer satisfaction",
+          "System outage compensation",
+          "Billing error correction"
+        ]
+      }
+    ]
+  },
+  {
+    "intent_id": "SummarizeConversation",
+    "description": "Provide a summary of the current conversation",
+    "examples": [
+      "Can you summarize this conversation for me?",
+      "Please provide a recap of the chat we just had",
+      "I need a summary of our discussion",
+      "Could you summarize what we talked about today?",
+      "Give me a brief recap of the current conversation"
+    ],
+    "slots": []
+  },
+  {
+    "intent_id": "GoToParentAccount",
+    "description": "Navigate to or view the parent account associated with a specific account",
+    "examples": [
+      "Can you take me to the parent account for customer 123456789?",
+      "Show me the parent account linked to account 543216789",
+      "I need to view the parent account for account 987654321",
+      "Go to the parent of this account",
+      "Navigate to the parent account for customer 333445566"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["123456789", "543216789", "987654321"]
+      }
+    ]
+  },
+  {
+    "intent_id": "AskAboutParentAccount",
+    "description": "Inquire about the parent account associated with a specific account",
+    "examples": [
+      "What is the parent account of customer 123456789?",
+      "Can you tell me the parent account for account 543216789?",
+      "Give me details about the parent account for customer 987654321"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["123456789", "543216789", "987654321"]
+      }
+    ]
+  },
+  {
+    "intent_id": "AccountActivityInquiry",
+    "description": "Check what changes have been made to an account within a specified timeframe",
+    "examples": [
+      "What changes have been made to my statement history since the last bill?",
+      "Show me any updates in my payment history from the beginning of August",
+      "Have there been any modifications to my plan history over the last 3 months?",
+      "Can you list updates in my statement history since July 1 for account 123456789?",
+      "Show any updates in my statement history since last year"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["123456789", "987654321"]
+      },
+      {
+        "name": "start_date",
+        "type": "string",
+        "required": false,
+        "description": "Start date in YYYY-MM-DD format",
+        "examples": ["2024-07-01", "2024-08-01"]
+      },
+      {
+        "name": "end_date",
+        "type": "string",
+        "required": false,
+        "description": "End date in YYYY-MM-DD format",
+        "examples": ["2024-12-31", "2024-09-30"]
+      },
+      {
+        "name": "last_months_count",
+        "type": "number",
+        "required": false,
+        "description": "Number of months to look back (1-12)",
+        "examples": ["3", "6", "12"]
+      }
+    ]
+  },
+  {
+    "intent_id": "BillCalculationInquiry",
+    "description": "Understand how the bill for a specific account is calculated",
+    "examples": [
+      "Can you explain how the bill for this account is calculated?",
+      "How is the bill for account 123456789 calculated?",
+      "Tell me how the charges for this account are calculated",
+      "Show me the calculation breakdown for customer 987654321",
+      "How are the charges for this account determined?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["123456789", "987654321", "543216789"]
+      },
+      {
+        "name": "statement_no",
+        "type": "string",
+        "required": false,
+        "description": "Statement number",
+        "examples": ["STMT-001", "STMT-002"]
+      },
+      {
+        "name": "date",
+        "type": "string",
+        "required": false,
+        "description": "Date in YYYY-MM-DD format",
+        "examples": ["2024-01-15", "2024-02-20"]
+      },
+      {
+        "name": "month",
+        "type": "string",
+        "required": false,
+        "description": "Month name",
+        "examples": ["January", "February", "March"]
+      }
+    ]
+  },
+  {
+    "intent_id": "BillFluctuationInquiry",
+    "description": "Ask about changes, variations, increases, or decreases in bill values",
+    "examples": [
+      "How much has the current bill for this account increased compared to the previous one?",
+      "How much more is the current bill for this customer than the last one?",
+      "How much has the current bill for this account decreased compared to the previous one?",
+      "How much has the bill changed for this account?",
+      "What is the difference between the last bill and the current one for this customer?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["123456789", "987654321"]
+      }
+    ]
+  },
+  {
+    "intent_id": "CompareLastTwoBills",
+    "description": "Compare the current bill with the previous bill (last two bills)",
+    "examples": [
+      "How does the current bill compare to the last bill for this account?",
+      "Show me the difference between this month's bill and the previous one for account 1234",
+      "Can you compare the latest bill to the previous bill for this customer?",
+      "What are the changes in charges between the current and previous bill?",
+      "Show me a comparison between the last two bills for this account"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["1234", "123456789"]
+      }
+    ]
+  },
+  {
+    "intent_id": "RecommendPlans",
+    "description": "Get plan or subscription recommendations based on usage patterns",
+    "examples": [
+      "What plan would you recommend for account ACC-102732184-01 with master plan instance MPL-8765-PRO based on their usage?",
+      "Can you suggest a better subscription plan for customer CUST/2435/NA currently on master plan instance 234532?",
+      "Recommend an alternate plan for 92834 for customer 39439",
+      "Are there any better plans for customer f09345?",
+      "Based on their consumption, which plan would be more suitable for account number 123456789 with plan MPL-9876-ENT?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["ACC-102732184-01", "CUST/2435/NA", "123456789"]
+      },
+      {
+        "name": "master_plan_instance_id",
+        "type": "string",
+        "required": false,
+        "description": "Current master plan instance identifier",
+        "examples": ["MPL-8765-PRO", "234532", "MPL-9876-ENT"]
+      }
+    ]
+  },
+  {
+    "intent_id": "CompareAnyTwoBills",
+    "description": "Compare bills for two specific months, dates, or statement numbers",
+    "examples": [
+      "Compare statement 5943449 with statement 3456783 for account ACC-102732184-01",
+      "Show the difference between statement 5949800 and statement 5949822 for client account ID CUST/2435/NA",
+      "Compare the 2024-01 and 2024-03 bills for account RESIDENTIAL-12346676",
+      "Show me how the 2023-04 bill compares to the 2023-12 bill for customer ID UK-45676-RES",
+      "Compare the January and March bills for account SA-12346676-AE"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["ACC-102732184-01", "CUST/2435/NA", "RESIDENTIAL-12346676"]
+      },
+      {
+        "name": "first_bill_statement_no",
+        "type": "string",
+        "required": false,
+        "description": "First bill statement number",
+        "examples": ["5943449", "5949800", "342343"]
+      },
+      {
+        "name": "second_bill_statement_no",
+        "type": "string",
+        "required": false,
+        "description": "Second bill statement number",
+        "examples": ["3456783", "5949822", "45456565"]
+      },
+      {
+        "name": "first_bill_date",
+        "type": "string",
+        "required": false,
+        "description": "First bill date in YYYY-MM format",
+        "examples": ["2024-01", "2023-04", "2024-02"]
+      },
+      {
+        "name": "second_bill_date",
+        "type": "string",
+        "required": false,
+        "description": "Second bill date in YYYY-MM format",
+        "examples": ["2024-03", "2023-12", "2023-10"]
+      },
+      {
+        "name": "first_bill_month",
+        "type": "string",
+        "required": false,
+        "description": "First bill month name",
+        "examples": ["January", "April", "June"]
+      },
+      {
+        "name": "second_bill_month",
+        "type": "string",
+        "required": false,
+        "description": "Second bill month name",
+        "examples": ["March", "December", "August"]
+      }
+    ]
+  },
+  {
+    "intent_id": "CompareLastTwoInvoices",
+    "description": "Compare the current and previous invoices (last two invoices) for a specific account",
+    "examples": [
+      "How does the current invoice compare to the last invoice for this account?",
+      "compare the last two invoices of the account CDAC-38475",
+      "Show me the difference between this month's invoice and the previous one for account ACC-5678",
+      "Can you compare the latest invoice to the previous invoice for this customer?",
+      "What are the changes in charges between the current and previous invoice of account 13865483?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["CDAC-38475", "ACC-5678", "13865483"]
+      }
+    ]
+  },
+  {
+    "intent_id": "EstimateNextBill",
+    "description": "Get an estimate or prediction of the next bill amount based on current usage patterns",
+    "examples": [
+      "Can you estimate the next bill for account ACC-102732184-01?",
+      "What will the next bill be for account CUST/2435/NA?",
+      "Give me an estimate of the upcoming bill for customer BUS987654321",
+      "Predict the next bill amount for account RESIDENTIAL-12346676",
+      "What's the expected bill for account UK-45676-RES?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["ACC-102732184-01", "CUST/2435/NA", "BUS987654321"]
+      }
+    ]
+  },
+  {
+    "intent_id": "CompareTwoSpecificInvoices",
+    "description": "Compare invoices for two specific months, dates, or invoice numbers",
+    "examples": [
+      "Compare invoice 12345 with invoice 67890 for account ACC-987654321",
+      "Show the difference between invoice 11223 and invoice 44556 for client account ID CL-5678/XX",
+      "Compare the 2024-01 and 2024-03 invoices for account RES/87654321",
+      "Show me how the April invoice compares to the December invoice for enterprise ID ENT/87654/USA",
+      "Compare the January and March invoices for account INV-12345678"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["ACC-987654321", "CL-5678/XX", "RES/87654321"]
+      },
+      {
+        "name": "first_invoice_no",
+        "type": "string",
+        "required": false,
+        "description": "First invoice number",
+        "examples": ["12345", "11223", "334455"]
+      },
+      {
+        "name": "second_invoice_no",
+        "type": "string",
+        "required": false,
+        "description": "Second invoice number",
+        "examples": ["67890", "44556", "667788"]
+      },
+      {
+        "name": "first_invoice_date",
+        "type": "string",
+        "required": false,
+        "description": "First invoice date in YYYY-MM or YYYY-MM-DD format",
+        "examples": ["2024-01", "2023-04", "2024-02"]
+      },
+      {
+        "name": "second_invoice_date",
+        "type": "string",
+        "required": false,
+        "description": "Second invoice date in YYYY-MM or YYYY-MM-DD format",
+        "examples": ["2024-03", "2023-12", "2023-10"]
+      },
+      {
+        "name": "first_invoice_month",
+        "type": "string",
+        "required": false,
+        "description": "First invoice month name",
+        "examples": ["January", "April", "June"]
+      },
+      {
+        "name": "second_invoice_month",
+        "type": "string",
+        "required": false,
+        "description": "Second invoice month name",
+        "examples": ["March", "December", "August"]
+      }
+    ]
+  },
+  {
+    "intent_id": "CheckPendingInvoices",
+    "description": "Check for pending invoices or approve pending invoices for an account",
+    "examples": [
+      "Are there any pending invoices for account 2938647632?",
+      "Can you check the pending invoices for account 1234567890?",
+      "Please approve the pending invoices for account ACC-23457643",
+      "Do we have any pending invoices for customer CORP-12345-UK?",
+      "Approve the pending invoice for account 209375694"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["2938647632", "1234567890", "ACC-23457643"]
+      },
+      {
+        "name": "invoice_no",
+        "type": "string",
+        "required": false,
+        "description": "Specific invoice number to approve",
+        "examples": ["456789123", "5678901234", "1234567890"]
+      }
+    ]
+  },
+  {
+    "intent_id": "ListRecentInvoices",
+    "description": "Retrieve or view a list of recent invoices for a specific account",
+    "examples": [
+      "Give me a list of the last 5 invoices for account ACC-102732184-01",
+      "Show me the recent 3 invoices for customer CUST/2435/NA",
+      "Can you display the latest 7 invoices for account 123456789?",
+      "I need to see the last 4 invoices for this account",
+      "List the most recent 6 invoices for client ID 7652-US"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["ACC-102732184-01", "CUST/2435/NA", "123456789"]
+      },
+      {
+        "name": "include_pending",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether to include pending invoices",
+        "examples": ["true", "false"]
+      },
+      {
+        "name": "max_count",
+        "type": "number",
+        "required": false,
+        "description": "Maximum number of invoices to retrieve",
+        "examples": ["5", "3", "7"]
+      }
+    ]
+  },
+  {
+    "intent_id": "NextPaymentDueInquiry",
+    "description": "Ask about next payment due date, amount, or payment schedule",
+    "examples": [
+      "When is my next payment due for account ACC-102732184-01?",
+      "How much will my next payment be for client account ID CUST/2435/NA?",
+      "When will my payment be taken from my account for account number 123456789?",
+      "What's my next payment amount for client ID 7652-US?",
+      "Tell me when my next bill is due for business account BUS987654321"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["ACC-102732184-01", "CUST/2435/NA", "123456789"]
+      }
+    ]
+  },
+  {
+    "intent_id": "SummarizeSubscriptions",
+    "description": "Get a summary of subscriptions associated with a specified account",
+    "examples": [
+      "Can you summarize the subscriptions on this account?",
+      "Can you summarize the subscriptions on account 827339246?",
+      "What subscriptions are active on this account?",
+      "Provide a summary of the subscriptions for account ACC-123456789",
+      "Show me the subscription details for account CUST/987654321"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["827339246", "ACC-123456789", "CUST/987654321"]
+      }
+    ]
+  },
+  {
+    "intent_id": "AdjustBillingDate",
+    "description": "Check if a customer can change their billing date or inquire about billing date modification",
+    "examples": [
+      "Can the customer 928376428 change their billing date to 2025-05-23?",
+      "Can the account 928983448 change their billing date to 2025-05-26?",
+      "Is the customer 453298347 eligible to update their billing date?",
+      "Can we move the customer's billing cycle to a new date?",
+      "Is it possible to adjust the customer 900765342's billing date?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["928376428", "928983448", "453298347"]
+      },
+      {
+        "name": "master_plan_instance_no",
+        "type": "string",
+        "required": false,
+        "description": "Master plan instance number",
+        "examples": ["765432", "987654", "345678"]
+      },
+      {
+        "name": "adjustment_date",
+        "type": "string",
+        "required": false,
+        "description": "New billing date in YYYY-MM-DD format",
+        "examples": ["2025-05-23", "2025-05-26", "2025-06-15"]
+      }
+    ]
+  },
+  {
+    "intent_id": "ConfirmBillingDateChange",
+    "description": "Confirm proceeding with changing the billing date",
+    "examples": [
+      "Yes.",
+      "Yes, I want to proceed.",
+      "Yes, please change the billing date.",
+      "Yes, update the billing date.",
+      "Yes, I confirm the change."
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["900765342", "123456789"]
+      },
+      {
+        "name": "master_plan_instance_no",
+        "type": "string",
+        "required": false,
+        "description": "Master plan instance number",
+        "examples": ["345678", "654321"]
+      },
+      {
+        "name": "adjustment_date",
+        "type": "string",
+        "required": false,
+        "description": "New billing date in YYYY-MM-DD format",
+        "examples": ["2025-06-15", "2025-08-19"]
+      }
+    ]
+  },
+  {
+    "intent_id": "DeclineBillingDateChange",
+    "description": "Decline or refuse to proceed with changing the billing date",
+    "examples": [
+      "No.",
+      "No, I don't want to change it.",
+      "No, please keep my current billing date.",
+      "No, I don't want to proceed.",
+      "No, I want to keep my billing cycle as is."
+    ],
+    "slots": []
+  },
+  {
+    "intent_id": "CalculateServiceCreditOutageForAllServices",
+    "description": "Calculate service credit for outages that affected all services on an account",
+    "examples": [
+      "The outage for account ACC-908172 lasted from January 1st at 8 AM to January 15th at 5:30 PM and affected all services. Apply a 10% adjustment when calculating the maximum Service Credit.",
+      "Account BUS-541263 experienced a complete service outage between February 5th and February 8th. What is the estimated Service Credit for all affected services?",
+      "Can you estimate the Service Credit for account MEM-314159 that had all services affected during an outage from March 10th at 6 AM to March 13th at 7 PM?",
+      "Calculate the maximum Service Credit due to an outage that impacted all services for account UK-246810. The outage was from April 1st to April 6th."
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["ACC-908172", "BUS-541263", "MEM-314159"]
+      },
+      {
+        "name": "outage_start_date",
+        "type": "string",
+        "required": false,
+        "description": "Outage start date",
+        "examples": ["January 1st", "February 5th", "March 10th"]
+      },
+      {
+        "name": "outage_end_date",
+        "type": "string",
+        "required": false,
+        "description": "Outage end date",
+        "examples": ["January 15th", "February 8th", "March 13th"]
+      },
+      {
+        "name": "outage_start_time",
+        "type": "string",
+        "required": false,
+        "description": "Outage start time in HH:MM 24-hour format",
+        "examples": ["08:00", "09:00", "06:00"]
+      },
+      {
+        "name": "outage_end_time",
+        "type": "string",
+        "required": false,
+        "description": "Outage end time in HH:MM 24-hour format",
+        "examples": ["17:30", "18:00", "19:00"]
+      },
+      {
+        "name": "duration_hours",
+        "type": "number",
+        "required": false,
+        "description": "Duration of outage in hours",
+        "examples": ["8", "10", "12"]
+      },
+      {
+        "name": "adjustment_percentage",
+        "type": "number",
+        "required": false,
+        "description": "Adjustment percentage to apply",
+        "examples": ["10", "15", "30"]
+      }
+    ]
+  },
+  {
+    "intent_id": "CalculateServiceCreditOutageForSomeServices",
+    "description": "Calculate service credit for outages that affected only some services on an account",
+    "examples": [
+      "Account BUS-888111 experienced an outage from March 3rd at 9 AM to March 7th at 4 PM, affecting some services. Please apply a 10% adjustment.",
+      "Can you estimate the Service Credit for account CUST-334455? The outage affected plan numbers P-202, P-305 between April 1st and April 4th.",
+      "For account MEM-998877, the customer reported a disruption to plan P-777 starting on May 10th at 7 AM until May 12th at 11 PM. Calculate the credit.",
+      "Account RES-114477 had a partial outage from June 2nd to June 5th. Only some services were impacted. Can you calculate the Service Credit?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["BUS-888111", "CUST-334455", "MEM-998877"]
+      },
+      {
+        "name": "outage_start_date",
+        "type": "string",
+        "required": false,
+        "description": "Outage start date",
+        "examples": ["March 3rd", "April 1st", "May 10th"]
+      },
+      {
+        "name": "outage_end_date",
+        "type": "string",
+        "required": false,
+        "description": "Outage end date",
+        "examples": ["March 7th", "April 4th", "May 12th"]
+      },
+      {
+        "name": "outage_start_time",
+        "type": "string",
+        "required": false,
+        "description": "Outage start time in HH:MM 24-hour format",
+        "examples": ["09:00", "07:00", "10:00"]
+      },
+      {
+        "name": "outage_end_time",
+        "type": "string",
+        "required": false,
+        "description": "Outage end time in HH:MM 24-hour format",
+        "examples": ["16:00", "23:00", "18:00"]
+      },
+      {
+        "name": "duration_hours",
+        "type": "number",
+        "required": false,
+        "description": "Duration of outage in hours",
+        "examples": ["9", "6", "12"]
+      },
+      {
+        "name": "adjustment_percentage",
+        "type": "number",
+        "required": false,
+        "description": "Adjustment percentage to apply",
+        "examples": ["10", "5", "20"]
+      },
+      {
+        "name": "plan_no_list",
+        "type": "string",
+        "required": false,
+        "description": "List of affected plan numbers",
+        "examples": ["P-202,P-305", "P-777", "P-100,P-101"]
+      }
+    ]
+  },
+  {
+    "intent_id": "PreviewCancelSubscription",
+    "description": "Preview the outcome of cancelling a subscription either immediately or at next billing cycle",
+    "examples": [
+      "Can you cancel the subscription 88421 for account 98346721 immediately?",
+      "Cancel subscription 77120 for account 47382912 from the next billing cycle.",
+      "I'd like to cancel subscription 33578 now under account 28491022.",
+      "Please cancel subscription 90211 under client account ID 2397DKS at the end of the billing cycle.",
+      "Can you cancel the Pro package for account 3142?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["98346721", "47382912", "28491022"]
+      },
+      {
+        "name": "master_plan_instance_no",
+        "type": "string",
+        "required": false,
+        "description": "Subscription or master plan instance number",
+        "examples": ["88421", "77120", "33578"]
+      },
+      {
+        "name": "on_anniversary",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether to cancel on anniversary/billing cycle date",
+        "examples": ["true", "false"]
+      },
+      {
+        "name": "plan_name",
+        "type": "string",
+        "required": false,
+        "description": "Plan name if provided instead of number",
+        "examples": ["Pro package", "Connect 300 plan", "Premium subscription"]
+      }
+    ]
+  },
+  {
+    "intent_id": "ConfirmCancelSubscription",
+    "description": "Confirm proceeding with subscription cancellation",
+    "examples": [
+      "Yes, cancel the subscription.",
+      "Yes, please proceed with cancellation.",
+      "Yes, cancel the subscription 238455.",
+      "Go ahead and cancel it.",
+      "Yes, cancel the subscription 38473 for account 38489."
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["38489", "293845", "223489"]
+      },
+      {
+        "name": "master_plan_instance_no",
+        "type": "string",
+        "required": false,
+        "description": "Subscription or master plan instance number",
+        "examples": ["238455", "38473", "23984"]
+      },
+      {
+        "name": "on_anniversary",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether to cancel on anniversary/billing cycle date",
+        "examples": ["true", "false"]
+      }
+    ]
+  },
+  {
+    "intent_id": "CalculateInvoices",
+    "description": "Calculate invoice metrics like totals, sums, differences and averages across recent invoices",
+    "examples": [
+      "What is the average total of the last 6 invoices for account 29346?",
+      "Show me the average of the last 3 invoices for account 93843.",
+      "Give me the total billed over the last 2 invoices for account 98347.",
+      "How much is the average billing for account 928376428?",
+      "What's the total billing for customer 453298347?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["29346", "93843", "98347"]
+      },
+      {
+        "name": "max_count",
+        "type": "number",
+        "required": false,
+        "description": "Number of invoices to include in calculation",
+        "examples": ["6", "3", "2"]
+      },
+      {
+        "name": "include_pending",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether to include pending invoices",
+        "examples": ["true", "false"]
+      }
+    ]
+  },
+  {
+    "intent_id": "RequestApplyServiceCredit",
+    "description": "Request to apply or create service credits at account level or for specific plan instances",
+    "examples": [
+      "Can you apply service credits for account 9384?",
+      "Please apply service credit to account number 4832.",
+      "Apply credits to account ID 7382-LKJ.",
+      "Can you create proportionate service credits for account 32478",
+      "Can you create shared service credits for account 32478"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["9384", "4832", "7382-LKJ"]
+      },
+      {
+        "name": "apply_level",
+        "type": "string",
+        "required": false,
+        "description": "How to apply credits: all, shared, or proportionally",
+        "examples": ["all", "shared", "proportionally"]
+      },
+      {
+        "name": "adjustment_percentage",
+        "type": "number",
+        "required": false,
+        "description": "Adjustment percentage to apply",
+        "examples": ["10", "15", "20"]
+      }
+    ]
+  },
+  {
+    "intent_id": "ConfirmApplyServiceCredit",
+    "description": "Confirm proceeding with applying a service credit",
+    "examples": [
+      "Yes.",
+      "Yes, apply the credit with comment 'Outage credit amount adjusted 20%, due to power outage.'",
+      "Yes create the service credit",
+      "Yes create the service credit with comment 'Outage credit amount adjusted 20%, due to power outage.'",
+      "Yes, I want the service credit."
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier",
+        "examples": ["987654321", "112233445"]
+      },
+      {
+        "name": "apply_level",
+        "type": "string",
+        "required": false,
+        "description": "How to apply credits: none, all, shared, or proportionally",
+        "examples": ["none", "all", "shared", "proportionally"]
+      },
+      {
+        "name": "adjustment_percentage",
+        "type": "number",
+        "required": false,
+        "description": "Adjustment percentage to apply",
+        "examples": ["20", "15", "10"]
+      },
+      {
+        "name": "comment",
+        "type": "string",
+        "required": false,
+        "description": "Comment or reason for the credit",
+        "examples": [
+          "Outage credit amount adjusted 20%, due to power outage.",
+          "Applied service credit",
+          "Created service credit"
+        ]
+      }
+    ]
+  },
+  {
+    "intent_id": "CreateStandaloneServiceCredit",
+    "description": "Create a standalone service credit with specific amount and plan/service details",
+    "examples": [
+      "Can you create a shared service credit of 30 dollars for account 3145 for plan instance 2969 and service no 11001010 and plan instance 2969 and service no 11001008",
+      "Create a proportionate service credit of £50 for account 9847 across plan instance 3456 and service 22001015",
+      "I need to add a $25 service credit to account 7382 for plan 8472 and service 9483 with plan 8473 and service 9484",
+      "Please create a shared credit of 75 dollars for account ID 2938-LKJ covering plan instance 5647 and service 33002020"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["3145", "9847", "7382"]
+      },
+      {
+        "name": "amount",
+        "type": "number",
+        "required": true,
+        "description": "Credit amount",
+        "examples": ["30", "50", "25"]
+      },
+      {
+        "name": "apply_level",
+        "type": "string",
+        "required": false,
+        "description": "How to apply credits: none, all, shared, or proportionally",
+        "examples": ["none", "all", "shared", "proportionally"]
+      },
+      {
+        "name": "plan_instance_service_combinations",
+        "type": "string",
+        "required": false,
+        "description": "Plan instance and service combinations",
+        "examples": [
+          "2969:11001010,2969:11001008",
+          "3456:22001015",
+          "8472:9483,8473:9484"
+        ]
+      },
+      {
+        "name": "comment",
+        "type": "string",
+        "required": false,
+        "description": "Comment or reason for the credit",
+        "examples": [
+          "billing error on last invoice",
+          "service downtime last week",
+          "customer complained about poor service quality"
+        ]
+      }
+    ]
+  },
+  {
+    "intent_id": "ExplainLastInvoice",
+    "description": "Get explanation or breakdown of the most recent invoice including pending invoices",
+    "examples": [
+      "Explain the last invoice for account 27432359",
+      "Can you break down the most recent invoice for account 123456789?",
+      "I need an explanation of the latest invoice for customer 987654321",
+      "Please explain my current invoice for account ACC-445566",
+      "Show me the breakdown of the pending invoice for account 445566778"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": true,
+        "description": "Account identifier",
+        "examples": ["27432359", "123456789", "987654321"]
+      },
+      {
+        "name": "is_pending",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether the invoice is pending",
+        "examples": ["true", "false"]
+      }
+    ]
+  },
+  {
+    "intent_id": "EndConversation",
+    "description": "End the conversation or chat session",
+    "examples": [
+      "That's all for now, thank you.",
+      "Please end the conversation.",
+      "I want to end the chat.",
+      "I'm done for now."
+    ],
+    "slots": []
+  },
+  {
+    "intent_id": "Fallback",
+    "description": "Fallback intent for queries that don't match other intents, with account ID extraction",
+    "examples": [
+      "Can you help me with something else?",
+      "I need help with a different issue.",
+      "Sorry, can you assist me with another query?",
+      "Let's talk about something else.",
+      "Can you help me with account 12345?"
+    ],
+    "slots": [
+      {
+        "name": "acct_id",
+        "type": "string",
+        "required": false,
+        "description": "Account identifier if mentioned",
+        "examples": ["12345", "ABC789"]
+      }
+    ]
+  }
+]

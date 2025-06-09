@@ -11,6 +11,14 @@ from app.models.bedrock_chat import (
     MessageRole,
     SupportedModel,
 )
+from app.models.exceptions import (
+    IntentNotFoundError,
+    IntentValidationError,
+    LLMCommunicationError,
+    PromptGenerationError,
+    ResponseParsingError,
+    SlotExtractionError,
+)
 from app.models.intent_classifier import (
     ClassificationResult,
     Intent,
@@ -18,11 +26,24 @@ from app.models.intent_classifier import (
     IntentConfig,
     SlotExtractionResponse,
 )
+from app.services.intent_classification import utils
+from app.services.intent_classification.error_handler import (
+    raise_empty_response_error,
+    raise_intent_loading_error,
+    raise_intent_parsing_error_from_data,
+    raise_intent_parsing_error_from_decode,
+    raise_intent_parsing_error_from_processing,
+    raise_llm_communication_error_for_classification,
+    raise_llm_communication_error_for_slots,
+    raise_prompt_generation_error,
+    raise_prompt_generation_error_for_slots,
+    raise_slot_parsing_error,
+)
 from app.services.logger import logger
 from app.services.prompt_manager import IntentPromptManager
 
 
-class IntentClassifierService:
+class IntentClassifier:
     """High-performance intent classification service using direct LLM prompts."""
 
     def __init__(
@@ -62,9 +83,9 @@ class IntentClassifierService:
         )
 
         if intents_file:
-            self.load_intents_from_file(intents_file)
+            self._load_intents_from_file(intents_file)
         elif intents_data:
-            self.load_intents_from_data(intents_data)
+            self._load_intents_from_data(intents_data)
         else:
             logger.warning("No intents provided during initialization")
 
@@ -72,206 +93,6 @@ class IntentClassifierService:
             "IntentClassifierService initialized successfully",
             num_intents=len(self.intents),
             intent_ids=[intent.intent_id for intent in self.intents],
-        )
-
-    def load_intents_from_file(self, file_path: str) -> None:
-        """Load intents from JSON file.
-
-        Args:
-            file_path: Path to JSON file containing intent definitions
-
-        Raises:
-            FileNotFoundError: If file doesn't exist
-            ValueError: If JSON is invalid or intent data is malformed
-        """
-        logger.info("Loading intents from file", file_path=file_path)
-        start_time = time.time()
-
-        try:
-            with Path.open(file_path, "rb") as f:
-                data = msgspec.json.decode(f.read())
-
-            logger.debug("File read successfully", file_path=file_path, data_type=type(data).__name__)
-
-        except FileNotFoundError as e:
-            error_msg = f"Intents file not found: {file_path}"
-            logger.error("Intents file not found", file_path=file_path, error=str(e))
-            raise FileNotFoundError(error_msg) from e
-        except msgspec.DecodeError as e:
-            error_msg = f"Invalid JSON in intents file: {e}"
-            logger.error("Invalid JSON in intents file", file_path=file_path, error=str(e))
-            raise ValueError(error_msg) from e
-
-        try:
-            if isinstance(data, list):
-                self.load_intents_from_data(data)
-            else:
-                self.intents = [Intent(**data)]
-                logger.debug("Loaded single intent from file", intent_id=self.intents[0].intent_id)
-
-            load_time = time.time() - start_time
-            logger.info(
-                "Intents loaded from file successfully",
-                file_path=file_path,
-                num_intents=len(self.intents),
-                load_time_seconds=round(load_time, 3),
-            )
-
-        except Exception as e:
-            logger.error("Failed to process intents from file", file_path=file_path, error=str(e))
-            raise
-
-    def load_intents_from_data(self, intents_data: list[dict]) -> None:
-        """Load intents from list of dictionaries.
-
-        Args:
-            intents_data: List of intent definition dictionaries
-
-        Raises:
-            ValueError: If intent data is malformed
-        """
-        logger.info("Loading intents from data", num_intents=len(intents_data))
-        start_time = time.time()
-
-        try:
-            self.intents = [Intent(**intent_data) for intent_data in intents_data]
-            logger.debug(
-                "Intent objects created",
-                intent_ids=[intent.intent_id for intent in self.intents],
-                total_slots=sum(len(intent.slots or []) for intent in self.intents),
-            )
-
-        except (ValueError, KeyError, TypeError) as e:
-            error_msg = f"Invalid intent data: {e}"
-            logger.error("Invalid intent data during object creation", error=str(e))
-            raise ValueError(error_msg) from e
-
-        intents_dict = [intent.model_dump() for intent in self.intents]
-        if not self.prompt_manager.validate_intent_data(intents_dict):
-            error_msg = "Intent data validation failed"
-            logger.error("Intent data validation failed", num_intents=len(intents_dict))
-            raise ValueError(error_msg)
-
-        load_time = time.time() - start_time
-        logger.info(
-            "Intents loaded from data successfully",
-            num_intents=len(self.intents),
-            load_time_seconds=round(load_time, 3),
-        )
-
-    def get_intent_by_id(self, intent_id: str) -> Intent | None:
-        """Get intent definition by ID.
-
-        Args:
-            intent_id: Intent identifier
-
-        Returns:
-            Intent object if found, None otherwise
-        """
-        logger.debug("Looking up intent by ID", intent_id=intent_id)
-
-        for intent in self.intents:
-            if intent.intent_id == intent_id:
-                logger.debug("Intent found", intent_id=intent_id, has_slots=bool(intent.slots))
-                return intent
-
-        logger.warning("Intent not found", intent_id=intent_id, available_intents=[i.intent_id for i in self.intents])
-        return None
-
-    def _parse_intent_classification_response(self, response_text: str) -> IntentClassificationResponse:
-        """Parse the LLM response for intent classification.
-
-        Args:
-            response_text: Raw response text from the LLM
-
-        Returns:
-            IntentClassificationResponse with parsed data
-        """
-        logger.debug("Parsing intent classification response", response_length=len(response_text))
-
-        try:
-            if response_text.strip().startswith("{"):
-                data = msgspec.json.decode(response_text.strip())
-                result = IntentClassificationResponse(
-                    intent_id=data.get("intent_id", self.config.fallback_intent_id),
-                    confidence=float(data.get("confidence", 0.0)),
-                    reasoning=data.get("reasoning", "No reasoning provided"),
-                )
-                logger.debug(
-                    "Successfully parsed JSON response",
-                    intent_id=result.intent_id,
-                    confidence=result.confidence,
-                )
-                return result
-        except (msgspec.DecodeError, ValueError, KeyError) as e:
-            logger.debug("JSON parsing failed, trying text parsing", error=str(e))
-
-        lines = response_text.strip().split("\n")
-        intent_id = self.config.fallback_intent_id
-        confidence = 0.0
-        reasoning = "Could not parse response"
-
-        for raw_line in lines:
-            line = raw_line.strip()
-            if line.lower().startswith("intent:") or line.lower().startswith("intent_id:"):
-                intent_id = line.split(":", 1)[1].strip().strip("\"'")
-            elif line.lower().startswith("confidence:"):
-                try:
-                    confidence = float(line.split(":", 1)[1].strip())
-                except (ValueError, IndexError):
-                    confidence = 0.0
-            elif line.lower().startswith("reasoning:"):
-                reasoning = line.split(":", 1)[1].strip().strip("\"'")
-
-        result = IntentClassificationResponse(
-            intent_id=intent_id,
-            confidence=confidence,
-            reasoning=reasoning,
-        )
-
-        logger.debug(
-            "Parsed text response",
-            intent_id=result.intent_id,
-            confidence=result.confidence,
-            parsing_method="text",
-        )
-
-        return result
-
-    def _parse_slot_extraction_response(self, response_text: str) -> SlotExtractionResponse:
-        """Parse the LLM response for slot extraction.
-
-        Args:
-            response_text: Raw response text from the LLM
-
-        Returns:
-            SlotExtractionResponse with parsed data
-        """
-        logger.debug("Parsing slot extraction response", response_length=len(response_text))
-
-        try:
-            if response_text.strip().startswith("{"):
-                data = msgspec.json.decode(response_text.strip())
-                result = SlotExtractionResponse(
-                    extracted_slots=data.get("extracted_slots", {}),
-                    confidence=float(data.get("confidence", 0.0)),
-                    reasoning=data.get("reasoning", "No reasoning provided"),
-                )
-                logger.debug(
-                    "Successfully parsed slot extraction JSON",
-                    extracted_slots=list(result.extracted_slots.keys()),
-                    num_slots=len(result.extracted_slots),
-                    confidence=result.confidence,
-                )
-                return result
-        except (msgspec.DecodeError, ValueError, KeyError) as e:
-            logger.debug("Slot extraction JSON parsing failed", error=str(e))
-
-        logger.warning("Could not parse slot extraction response, returning empty result")
-        return SlotExtractionResponse(
-            extracted_slots={},
-            confidence=0.0,
-            reasoning="Could not parse slot extraction response",
         )
 
     def classify_intent_only(
@@ -285,6 +106,10 @@ class IntentClassifierService:
 
         Returns:
             IntentClassificationResponse with intent classification only
+
+        Raises:
+            PromptGenerationError: If system prompt generation fails
+            LLMCommunicationError: If LLM communication fails
         """
         logger.info(
             "Starting intent classification",
@@ -296,15 +121,9 @@ class IntentClassifierService:
 
         if not self.intents:
             logger.error("No intents loaded for classification")
-            return IntentClassificationResponse(
-                intent_id=self.config.fallback_intent_id,
-                confidence=0.0,
-                reasoning="No intents loaded",
-            )
+            return utils.create_no_intents_fallback(self.config.fallback_intent_id)
 
-        messages = messages or []
-        conversation_messages = messages.copy()
-        conversation_messages.append(Message(role=MessageRole.USER).add_text(user_query))
+        conversation_messages = utils.prepare_conversation_messages(user_query, messages)
 
         logger.debug(
             "Prepared conversation messages",
@@ -321,13 +140,9 @@ class IntentClassifierService:
             )
             logger.debug("System prompt generated", prompt_length=len(system_prompt))
 
-        except (ValueError, KeyError, TypeError) as e:
+        except (TypeError, ValueError, AttributeError) as e:
             logger.error("Failed to generate system prompt", error=str(e))
-            return IntentClassificationResponse(
-                intent_id=self.config.fallback_intent_id,
-                confidence=0.0,
-                reasoning=f"Failed to generate system prompt: {e}",
-            )
+            raise_prompt_generation_error(str(e), len(self.intents))
 
         params = ConversationParams(
             model_id=SupportedModel.CLAUDE_3_HAIKU,
@@ -350,37 +165,28 @@ class IntentClassifierService:
 
             logger.debug("LLM response received", llm_time_seconds=round(llm_time, 3))
 
-            response_text = ""
-            if "output" in response and "message" in response["output"]:
-                content = response["output"]["message"]["content"]
-                for item in content:
-                    if "text" in item:
-                        response_text += item["text"]
+            response_text = utils.extract_response_text(response)
 
             if not response_text:
                 logger.warning("Empty response from LLM")
-                return IntentClassificationResponse(
-                    intent_id=self.config.fallback_intent_id,
-                    confidence=0.0,
-                    reasoning="Empty response from model",
-                )
+                return utils.create_empty_response_fallback(self.config.fallback_intent_id)
 
             logger.debug("Response text extracted", response_length=len(response_text))
 
-            result = self._parse_intent_classification_response(response_text)
+            try:
+                result = self._parse_intent_classification_response(response_text)
+            except ResponseParsingError:
+                logger.warning("Failed to parse response, using fallback")
+                result = utils.create_parse_error_fallback(self.config.fallback_intent_id)
 
-            if result.confidence < self.config.confidence_threshold:
+            if utils.should_use_fallback(result.confidence, self.config.confidence_threshold):
                 logger.info(
                     "Confidence below threshold, using fallback",
                     original_intent=result.intent_id,
                     confidence=result.confidence,
                     threshold=self.config.confidence_threshold,
                 )
-                result = IntentClassificationResponse(
-                    intent_id=self.config.fallback_intent_id,
-                    confidence=result.confidence,
-                    reasoning=f"Low confidence ({result.confidence:.2f}) for any specific intent. Using fallback.",
-                )
+                result = utils.create_low_confidence_response(self.config.fallback_intent_id, result.confidence)
 
             total_time = time.time() - start_time
             logger.info(
@@ -391,18 +197,14 @@ class IntentClassifierService:
                 llm_time_seconds=round(llm_time, 3),
             )
 
-        except (ValueError, KeyError, TypeError, RuntimeError) as e:
+        except (ConnectionError, TimeoutError, KeyError, TypeError) as e:
             total_time = time.time() - start_time
             logger.error(
                 "Error during intent classification",
                 error=str(e),
                 total_time_seconds=round(total_time, 3),
             )
-            return IntentClassificationResponse(
-                intent_id=self.config.fallback_intent_id,
-                confidence=0.0,
-                reasoning=f"Error during classification: {e}",
-            )
+            raise_llm_communication_error_for_classification(str(e), params.model_id.value)
         else:
             return result
 
@@ -415,6 +217,12 @@ class IntentClassifierService:
 
         Returns:
             SlotExtractionResponse with extracted slots
+
+        Raises:
+            IntentNotFoundError: If intent ID is not found
+            PromptGenerationError: If slot extraction prompt generation fails
+            LLMCommunicationError: If LLM communication fails
+            SlotExtractionError: If slot extraction process fails
         """
         logger.info(
             "Starting slot extraction",
@@ -423,10 +231,7 @@ class IntentClassifierService:
         )
         start_time = time.time()
 
-        intent = self.get_intent_by_id(intent_id)
-        if not intent:
-            logger.error("Intent not found for slot extraction", intent_id=intent_id)
-            return SlotExtractionResponse(extracted_slots={}, confidence=0.0, reasoning=f"Intent {intent_id} not found")
+        intent = self._get_intent_by_id()(intent_id)
 
         if not intent.slots:
             logger.info("Intent has no slots to extract", intent_id=intent_id)
@@ -441,78 +246,25 @@ class IntentClassifierService:
             slot_names=[slot.name for slot in intent.slots],
         )
 
+        system_prompt = self._generate_slot_extraction_prompt(intent, user_query)
+        response_text = self._call_llm_for_slot_extraction(system_prompt, user_query, intent_id)
+
         try:
-            intent_data = intent.model_dump()
-            system_prompt = self.prompt_manager.render_slot_extraction_prompt(
-                intent_definition=intent_data, user_query=user_query
-            )
-            logger.debug("Slot extraction prompt generated", prompt_length=len(system_prompt))
+            result = self._parse_slot_extraction_response(response_text)
+        except ResponseParsingError as e:
+            raise_slot_parsing_error(intent_id, str(e), len(response_text))
 
-        except (ValueError, KeyError, TypeError) as e:
-            logger.error("Failed to generate slot extraction prompt", intent_id=intent_id, error=str(e))
-            return SlotExtractionResponse(
-                extracted_slots={},
-                confidence=0.0,
-                reasoning=f"Failed to generate slot extraction prompt: {e}",
-            )
-
-        params = ConversationParams(
-            model_id=SupportedModel.CLAUDE_3_HAIKU,
-            messages=[Message(role=MessageRole.USER).add_text(user_query)],
-            system=[{"text": system_prompt}],
-            inference_config=InferenceConfig(temperature=self.config.temperature, max_tokens=self.config.max_tokens),
+        total_time = time.time() - start_time
+        logger.info(
+            "Slot extraction completed",
+            intent_id=intent_id,
+            extracted_slots=list(result.extracted_slots.keys()),
+            num_extracted_slots=len(result.extracted_slots),
+            confidence=result.confidence,
+            total_time_seconds=round(total_time, 3),
         )
 
-        logger.debug("Calling LLM for slot extraction", intent_id=intent_id)
-
-        try:
-            llm_start_time = time.time()
-            response = self.client.converse(params)
-            llm_time = time.time() - llm_start_time
-
-            logger.debug("Slot extraction LLM response received", llm_time_seconds=round(llm_time, 3))
-
-            response_text = ""
-            if "output" in response and "message" in response["output"]:
-                content = response["output"]["message"]["content"]
-                for item in content:
-                    if "text" in item:
-                        response_text += item["text"]
-
-            if not response_text:
-                logger.warning("Empty response from slot extraction LLM", intent_id=intent_id)
-                return SlotExtractionResponse(
-                    extracted_slots={},
-                    confidence=0.0,
-                    reasoning="Empty response from model",
-                )
-
-            result = self._parse_slot_extraction_response(response_text)
-
-            total_time = time.time() - start_time
-            logger.info(
-                "Slot extraction completed",
-                intent_id=intent_id,
-                extracted_slots=list(result.extracted_slots.keys()),
-                num_extracted_slots=len(result.extracted_slots),
-                confidence=result.confidence,
-                total_time_seconds=round(total_time, 3),
-                llm_time_seconds=round(llm_time, 3),
-            )
-
-        except (ValueError, KeyError, TypeError, RuntimeError) as e:
-            total_time = time.time() - start_time
-            logger.error(
-                "Error during slot extraction",
-                intent_id=intent_id,
-                error=str(e),
-                total_time_seconds=round(total_time, 3),
-            )
-            return SlotExtractionResponse(
-                extracted_slots={}, confidence=0.0, reasoning=f"Error during slot extraction: {e}"
-            )
-        else:
-            return result
+        return result
 
     def classify(self, user_query: str, messages: list[Message] | None = None) -> ClassificationResult:
         """Complete classification with intent and slot extraction.
@@ -523,6 +275,10 @@ class IntentClassifierService:
 
         Returns:
             ClassificationResult with intent and extracted slots
+
+        Raises:
+            PromptGenerationError: If prompt generation fails
+            LLMCommunicationError: If LLM communication fails
         """
         logger.info(
             "Starting complete classification",
@@ -548,14 +304,28 @@ class IntentClassifierService:
                 reasoning=intent_result.reasoning,
             )
 
-        slot_result = self.extract_slots(user_query, intent_result.intent_id)
+        try:
+            slot_result = self.extract_slots(user_query, intent_result.intent_id)
+        except (IntentNotFoundError, PromptGenerationError, LLMCommunicationError, SlotExtractionError) as e:
+            logger.warning(
+                "Slot extraction failed, returning classification with empty slots",
+                intent_id=intent_result.intent_id,
+                error=str(e),
+            )
 
-        final_confidence = min(intent_result.confidence, slot_result.confidence)
+            return ClassificationResult(
+                intent_id=intent_result.intent_id,
+                confidence=intent_result.confidence,
+                extracted_slots={},
+                reasoning=utils.format_failed_slot_reasoning(intent_result.reasoning, str(e)),
+            )
+
+        final_confidence = utils.calculate_final_confidence(intent_result.confidence, slot_result.confidence)
         result = ClassificationResult(
             intent_id=intent_result.intent_id,
             confidence=final_confidence,
             extracted_slots=slot_result.extracted_slots,
-            reasoning=f"Intent: {intent_result.reasoning}. Slots: {slot_result.reasoning}",
+            reasoning=utils.format_combined_reasoning(intent_result.reasoning, slot_result.reasoning),
         )
 
         total_time = time.time() - start_time
@@ -568,86 +338,285 @@ class IntentClassifierService:
             num_extracted_slots=len(result.extracted_slots),
             total_time_seconds=round(total_time, 3),
         )
-
-        assert isinstance(result, ClassificationResult), "Unexpected result type in classify()"
         return result
 
+    def _load_intents_from_file(self, file_path: str) -> None:
+        """Load intents from JSON file.
 
-def create_classifier(
-    intents_data: list[dict],
-    fallback_intent_id: str = "Fallback",
-    confidence_threshold: float = 0.8,
-    temperature: float = 0.0,
-    max_tokens: int | None = None,
-) -> IntentClassifierService:
-    """Factory function to create a classifier with common settings.
+        Args:
+            file_path: Path to JSON file containing intent definitions
 
-    Args:
-        intents_data: List of intent definition dictionaries
-        fallback_intent_id: Intent ID for unmatched queries
-        confidence_threshold: Minimum confidence for specific intents
-        temperature: Model temperature for classification
-        max_tokens: Maximum tokens in model response
+        Raises:
+            IntentLoadingError: If file doesn't exist or cannot be read
+            IntentParsingError: If JSON is invalid or intent data is malformed
+        """
+        logger.info("Loading intents from file", file_path=file_path)
+        start_time = time.time()
 
-    Returns:
-        Configured IntentClassifierService instance
-    """
-    logger.info(
-        "Creating classifier from data",
-        num_intents=len(intents_data),
-        fallback_intent_id=fallback_intent_id,
-        confidence_threshold=confidence_threshold,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
+        try:
+            with Path.open(file_path, "rb") as f:
+                data = msgspec.json.decode(f.read())
 
-    config = IntentConfig(
-        fallback_intent_id=fallback_intent_id,
-        confidence_threshold=confidence_threshold,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
+            logger.debug("File read successfully", file_path=file_path, data_type=type(data).__name__)
 
-    classifier = IntentClassifierService(intents_data=intents_data, config=config)
-    logger.info("Classifier created successfully from data")
-    return classifier
+        except FileNotFoundError as e:
+            logger.error("Intents file not found", file_path=file_path, error=str(e))
+            raise_intent_loading_error(file_path)
+        except msgspec.DecodeError as e:
+            logger.error("Invalid JSON in intents file", file_path=file_path, error=str(e))
+            raise_intent_parsing_error_from_decode(file_path, str(e))
 
+        try:
+            if isinstance(data, list):
+                self._load_intents_from_data(data)
+            else:
+                self.intents = [Intent(**data)]
+                logger.debug("Loaded single intent from file", intent_id=self.intents[0].intent_id)
 
-def create_classifier_from_file(
-    intents_file: str,
-    fallback_intent_id: str = "Fallback",
-    confidence_threshold: float = 0.8,
-    temperature: float = 0,
-    max_tokens: int | None = None,
-) -> IntentClassifierService:
-    """Factory function to create a classifier from intents file.
+            load_time = time.time() - start_time
+            logger.info(
+                "Intents loaded from file successfully",
+                file_path=file_path,
+                num_intents=len(self.intents),
+                load_time_seconds=round(load_time, 3),
+            )
 
-    Args:
-        intents_file: Path to JSON file containing intent definitions
-        fallback_intent_id: Intent ID for unmatched queries
-        confidence_threshold: Minimum confidence for specific intents
-        temperature: Model temperature for classification
-        max_tokens: Maximum tokens in model response
+        except IntentValidationError:
+            raise
+        except (TypeError, ValueError, KeyError) as e:
+            logger.error("Failed to process intents from file", file_path=file_path, error=str(e))
+            raise_intent_parsing_error_from_processing(file_path, str(e))
 
-    Returns:
-        Configured IntentClassifierService instance
-    """
-    logger.info(
-        "Creating classifier from file",
-        intents_file=intents_file,
-        fallback_intent_id=fallback_intent_id,
-        confidence_threshold=confidence_threshold,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
+    def _load_intents_from_data(self, intents_data: list[dict]) -> None:
+        """Load intents from list of dictionaries.
 
-    config = IntentConfig(
-        fallback_intent_id=fallback_intent_id,
-        confidence_threshold=confidence_threshold,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
+        Args:
+            intents_data: List of intent definition dictionaries
 
-    classifier = IntentClassifierService(intents_file=intents_file, config=config)
-    logger.info("Classifier created successfully from file")
-    return classifier
+        Raises:
+            IntentParsingError: If intent data is malformed
+            IntentValidationError: If intent data fails validation
+        """
+        logger.info("Loading intents from data", num_intents=len(intents_data))
+        start_time = time.time()
+
+        try:
+            self.intents = [Intent(**intent_data) for intent_data in intents_data]
+            logger.debug(
+                "Intent objects created",
+                intent_ids=[intent.intent_id for intent in self.intents],
+                total_slots=sum(len(intent.slots or []) for intent in self.intents),
+            )
+
+        except (TypeError, ValueError, KeyError) as e:
+            logger.error("Invalid intent data during object creation", error=str(e))
+            raise_intent_parsing_error_from_data(len(intents_data), str(e))
+
+        intents_dict = [intent.model_dump() for intent in self.intents]
+        if not self.prompt_manager.validate_intent_data(intents_dict):
+            error_msg = "Intent data validation failed"
+            logger.error("Intent data validation failed", num_intents=len(intents_dict))
+            raise IntentValidationError(
+                error_msg, {"num_intents": len(intents_dict), "intent_ids": [i.intent_id for i in self.intents]}
+            )
+
+        load_time = time.time() - start_time
+        logger.info(
+            "Intents loaded from data successfully",
+            num_intents=len(self.intents),
+            load_time_seconds=round(load_time, 3),
+        )
+
+    def _get_intent_by_id(self, intent_id: str) -> Intent:
+        """Get intent definition by ID.
+
+        Args:
+            intent_id: Intent identifier
+
+        Returns:
+            Intent object
+
+        Raises:
+            IntentNotFoundError: If intent ID is not found
+        """
+        logger.debug("Looking up intent by ID", intent_id=intent_id)
+
+        for intent in self.intents:
+            if intent.intent_id == intent_id:
+                logger.debug("Intent found", intent_id=intent_id, has_slots=bool(intent.slots))
+                return intent
+
+        available_intents = [i.intent_id for i in self.intents]
+        logger.warning("Intent not found", intent_id=intent_id, available_intents=available_intents)
+        raise IntentNotFoundError(intent_id, available_intents)
+
+    def _parse_intent_classification_response(self, response_text: str) -> IntentClassificationResponse:
+        """Parse the LLM response for intent classification.
+
+        Args:
+            response_text: Raw response text from the LLM
+
+        Returns:
+            IntentClassificationResponse with parsed data
+
+        Raises:
+            ResponseParsingError: If response cannot be parsed properly
+        """
+        logger.debug("Parsing intent classification response", response_length=len(response_text))
+
+        try:
+            if response_text.strip().startswith("{"):
+                data = msgspec.json.decode(response_text.strip())
+                result = IntentClassificationResponse(
+                    intent_id=data.get("intent_id", self.config.fallback_intent_id),
+                    confidence=float(data.get("confidence", 0.0)),
+                    reasoning=data.get("reasoning", "No reasoning provided"),
+                )
+                logger.debug(
+                    "Successfully parsed JSON response",
+                    intent_id=result.intent_id,
+                    confidence=result.confidence,
+                )
+                return result
+        except (msgspec.DecodeError, ValueError, KeyError) as e:
+            logger.debug("JSON parsing failed, trying text parsing", error=str(e))
+
+        try:
+            lines = response_text.strip().split("\n")
+            intent_id = self.config.fallback_intent_id
+            confidence = 0.0
+            reasoning = "Could not parse response"
+
+            for raw_line in lines:
+                line = raw_line.strip()
+                if line.lower().startswith("intent:") or line.lower().startswith("intent_id:"):
+                    intent_id = line.split(":", 1)[1].strip().strip("\"'")
+                elif line.lower().startswith("confidence:"):
+                    try:
+                        confidence = float(line.split(":", 1)[1].strip())
+                    except (ValueError, IndexError):
+                        confidence = 0.0
+                elif line.lower().startswith("reasoning:"):
+                    reasoning = line.split(":", 1)[1].strip().strip("\"'")
+
+            result = IntentClassificationResponse(
+                intent_id=intent_id,
+                confidence=confidence,
+                reasoning=reasoning,
+            )
+
+            logger.debug(
+                "Parsed text response",
+                intent_id=result.intent_id,
+                confidence=result.confidence,
+                parsing_method="text",
+            )
+
+        except (ValueError, IndexError, AttributeError) as e:
+            logger.error("Failed to parse intent classification response", error=str(e))
+            raise ResponseParsingError(response_text, "intent classification") from e
+        else:
+            return result
+
+    def _parse_slot_extraction_response(self, response_text: str) -> SlotExtractionResponse:
+        """Parse the LLM response for slot extraction.
+
+        Args:
+            response_text: Raw response text from the LLM
+
+        Returns:
+            SlotExtractionResponse with parsed data
+
+        Raises:
+            ResponseParsingError: If response cannot be parsed properly
+        """
+        logger.debug("Parsing slot extraction response", response_length=len(response_text))
+
+        try:
+            if response_text.strip().startswith("{"):
+                data = msgspec.json.decode(response_text.strip())
+                result = SlotExtractionResponse(
+                    extracted_slots=data.get("extracted_slots", {}),
+                    confidence=float(data.get("confidence", 0.0)),
+                    reasoning=data.get("reasoning", "No reasoning provided"),
+                )
+                logger.debug(
+                    "Successfully parsed slot extraction JSON",
+                    extracted_slots=list(result.extracted_slots.keys()),
+                    num_slots=len(result.extracted_slots),
+                    confidence=result.confidence,
+                )
+                return result
+        except (msgspec.DecodeError, ValueError, KeyError) as e:
+            logger.debug("Slot extraction JSON parsing failed", error=str(e))
+            logger.warning("Could not parse slot extraction response, returning empty result")
+            raise ResponseParsingError(response_text, "slot extraction") from e
+
+    def _generate_slot_extraction_prompt(self, intent: Intent, user_query: str) -> str:
+        """Generate slot extraction prompt.
+
+        Args:
+            intent: Intent object
+            user_query: User query
+
+        Returns:
+            Generated prompt string
+
+        Raises:
+            PromptGenerationError: If prompt generation fails
+        """
+        try:
+            intent_data = intent.model_dump()
+            system_prompt = self.prompt_manager.render_slot_extraction_prompt(
+                intent_definition=intent_data, user_query=user_query
+            )
+            logger.debug("Slot extraction prompt generated", prompt_length=len(system_prompt))
+        except (TypeError, ValueError, AttributeError) as e:
+            logger.error("Failed to generate slot extraction prompt", intent_id=intent.intent_id, error=str(e))
+            raise_prompt_generation_error_for_slots(intent.intent_id, str(e))
+        else:
+            return system_prompt
+
+    def _call_llm_for_slot_extraction(self, system_prompt: str, user_query: str, intent_id: str) -> str:
+        """Call LLM for slot extraction.
+
+        Args:
+            system_prompt: System prompt for LLM
+            user_query: User query
+            intent_id: Intent identifier for logging
+
+        Returns:
+            Response text from LLM
+
+        Raises:
+            SlotExtractionError: If LLM returns empty response
+            LLMCommunicationError: If LLM communication fails
+        """
+        params = ConversationParams(
+            model_id=SupportedModel.CLAUDE_3_HAIKU,
+            messages=[Message(role=MessageRole.USER).add_text(user_query)],
+            system=[{"text": system_prompt}],
+            inference_config=InferenceConfig(temperature=self.config.temperature, max_tokens=self.config.max_tokens),
+        )
+
+        logger.debug("Calling LLM for slot extraction", intent_id=intent_id)
+
+        try:
+            llm_start_time = time.time()
+            response = self.client.converse(params)
+            llm_time = time.time() - llm_start_time
+
+            logger.debug("Slot extraction LLM response received", llm_time_seconds=round(llm_time, 3))
+
+            response_text = utils.extract_response_text(response)
+
+            if not response_text:
+                logger.warning("Empty response from slot extraction LLM", intent_id=intent_id)
+                raise_empty_response_error(intent_id)
+
+        except SlotExtractionError:
+            raise
+        except (ConnectionError, TimeoutError, KeyError, TypeError) as e:
+            raise_llm_communication_error_for_slots(intent_id, str(e))
+        else:
+            return response_text
