@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 from typing import Any
 
 import boto3
@@ -29,7 +30,7 @@ def lambda_handler(event: dict[str, Any], _context: dict[str, Any]) -> dict[str,
 
     try:
         if route_key == "$connect":
-            return handle_connect(connection_id, event)
+            return handle_connect(connection_id)
         if route_key == "$disconnect":
             return handle_disconnect(connection_id)
         logger.error("Unknown route: %s", route_key)
@@ -41,37 +42,33 @@ def lambda_handler(event: dict[str, Any], _context: dict[str, Any]) -> dict[str,
         return {"statusCode": 400}
 
 
-def handle_connect(connection_id: str, event: dict[str, Any]) -> dict[str, Any]:
-    """Store connection information when a client connects.
+def handle_connect(connection_id: str) -> dict[str, Any]:
+    """Store new connection with a unique session ID.
 
-    Extracts connection metadata from the event and stores it in DynamoDB
-    with a 24-hour TTL for automatic cleanup.
+    Generates a new UUID for the session and stores the mapping between
+    the connectionId and sessionId in DynamoDB.
 
     Args:
         connection_id: The unique WebSocket connection identifier.
-        event: The connection event containing metadata.
 
     Returns:
         A response indicating whether the connection was stored successfully.
     """
-    try:
-        request_context = event["requestContext"]
-        current_time = int(time.time())
+    session_id = str(uuid.uuid4())
+    current_time = int(time.time())
 
+    try:
         table.put_item(
             Item={
                 "connectionId": connection_id,
-                "timestamp": current_time,
-                "connectedAt": request_context.get("connectedAt"),
-                "sourceIp": request_context.get("identity", {}).get("sourceIp"),
-                "userAgent": request_context.get("identity", {}).get("userAgent"),
+                "sessionId": session_id,
+                "createdAt": current_time,
                 "ttl": current_time + 86400,  # 24 hours TTL
             }
         )
+        logger.info("Connection stored: %s with sessionId: %s", connection_id, session_id)
 
-        logger.info("Connection stored: %s", connection_id)
-
-    except (KeyError, ClientError):
+    except ClientError:
         logger.exception("Error storing connection %s", connection_id)
         return {"statusCode": 500}
     else:
@@ -92,10 +89,9 @@ def handle_disconnect(connection_id: str) -> dict[str, Any]:
     """
     try:
         table.delete_item(Key={"connectionId": connection_id})
-
         logger.info("Connection removed: %s", connection_id)
 
-    except (KeyError, ClientError):
+    except ClientError:
         logger.exception("Error removing connection %s", connection_id)
         return {"statusCode": 500}
     else:

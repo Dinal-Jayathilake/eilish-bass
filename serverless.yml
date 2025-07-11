@@ -16,25 +16,28 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${self:custom.regions.${self:provider.stage}}
   websocketsApiName: ${self:service}-${sls:stage}-websockets
+  websocketsApiRouteSelectionExpression: $request.body.action
   environment:
     WEBSOCKET_CONNECTIONS_TABLE: !Ref websocketConnectionsTable
     WEBSOCKET_API_ENDPOINT: !Sub "https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${sls:stage}"
   logRetentionInDays: 1
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:PutItem
-        - dynamodb:DeleteItem
-        - dynamodb:Scan
-        - dynamodb:Query
-      Resource:
-        - !GetAtt websocketConnectionsTable.Arn
-        - !Sub "${websocketConnectionsTable.Arn}/index/*"
-    - Effect: Allow
-      Action:
-        - execute-api:ManageConnections
-      Resource:
-        - !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebsocketsApi}/*/*"
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:DeleteItem
+            - dynamodb:GetItem
+            - dynamodb:Query
+          Resource:
+            - !GetAtt websocketConnectionsTable.Arn
+            - !Sub "${websocketConnectionsTable.Arn}/index/*"
+        - Effect: Allow
+          Action:
+            - execute-api:ManageConnections
+          Resource:
+            - !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebsocketsApi}/*/*"
 
 functions:
   coreHandlerLambda:
@@ -54,15 +57,22 @@ functions:
     layers:
       - Ref: PythonRequirementsLambdaLayer
 
-  websocketMessageHandlerLambda:
+  websocketDefaultHandlerLambda:
     handler: app.functions.websocket.message.handler.lambda_handler
-    name: ${self:service}-${sls:stage}-websocket-message-handler
+    name: ${self:service}-${sls:stage}-websocket-default-handler
     events:
-      - websocket: $default
       - websocket:
-          route: sendMessage
+          route: $default
+          routeResponseSelectionExpression: "$default"
+    layers:
+      - Ref: PythonRequirementsLambdaLayer
+
+  websocketDispatchHandlerLambda:
+    handler: app.functions.websocket.dispatch.handler.lambda_handler
+    name: ${self:service}-${sls:stage}-dispatch-handler
+    events:
       - websocket:
-          route: broadcast
+          route: dispatch
     layers:
       - Ref: PythonRequirementsLambdaLayer
 
@@ -76,18 +86,9 @@ resources:
         AttributeDefinitions:
           - AttributeName: connectionId
             AttributeType: S
-          - AttributeName: timestamp
-            AttributeType: N
         KeySchema:
           - AttributeName: connectionId
             KeyType: HASH
-        GlobalSecondaryIndexes:
-          - IndexName: TimestampIndex
-            KeySchema:
-              - AttributeName: timestamp
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: true
