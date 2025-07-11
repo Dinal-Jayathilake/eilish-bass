@@ -58,7 +58,7 @@ functions:
       - Ref: PythonRequirementsLambdaLayer
 
   websocketDefaultHandlerLambda:
-    handler: app.functions.websocket.message.handler.lambda_handler
+    handler: app.functions.websocket.handler.lambda_handler
     name: ${self:service}-${sls:stage}-websocket-default-handler
     events:
       - websocket:
