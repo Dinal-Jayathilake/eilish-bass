@@ -55,9 +55,9 @@ if __name__ == "__main__":
     test_queries = [
         # "Can you show me a summary of customer 123456789?",
         # "What's my balance?",
-        "Hi",
+        # "Hi",
         # "Hello there!",
-        # "Random gibberish that won't match any intent",
+        "add a cash credit to that account",
     ]
 
     for query in test_queries:

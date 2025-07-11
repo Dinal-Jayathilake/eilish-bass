@@ -24,10 +24,8 @@ var/
 *.egg
 
 # Virtual environment
-.env/
-.venv/
-env/
-venv/
+.env*
+.venv*
 
 # PyInstaller
 *.manifest
